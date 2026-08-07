@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Embed Dashboard Creator</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0A0C11;
+    min-height: 100vh;
+  }
+</style>
+<style>
+  #edc-root {
+    --bg-void: #0A0C11;
+    --bg-panel: #12151D;
+    --bg-elevated: #1A1E29;
+    --bg-input: #10131A;
+    --border: #262B38;
+    --border-soft: #1E222D;
+    --pink: #F0317A;
+    --teal: #2DC4D4;
+    --text-hi: #ECEEF3;
+    --text-mid: #9AA0B2;
+    --text-low: #5B6172;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-void);
+    color: var(--text-hi);
+    border-radius: 0;
+    overflow: hidden;
+    border: none;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #edc-root * { box-sizing: border-box; }
+  #edc-root .heading-font { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+
+  #edc-root .edc-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: linear-gradient(180deg, #12151D 0%, #0F1218 100%);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  #edc-root .edc-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-right: 6px;
+  }
+  #edc-root .edc-dot {
+    width: 9px; height: 9px; border-radius: 3px;
+    background: linear-gradient(135deg, var(--pink), var(--teal));
+    flex-shrink: 0;
+  }
+  #edc-root .edc-brand-text {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  #edc-root .edc-webhook-row {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    min-width: 220px;
+  }
+  #edc-root input[type="text"], #edc-root input[type="url"], #edc-root textarea {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-hi);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+  #edc-root input[type="text"]:focus, #edc-root input[type="url"]:focus, #edc-root textarea:focus {
+    outline: none;
+    border-color: var(--teal);
+  }
+  #edc-root input::placeholder, #edc-root textarea::placeholder { color: var(--text-low); }
+  #edc-root .edc-webhook-input { flex: 1; font-family: 'SF Mono', Consolas, monospace; font-size: 12px; }
+
+  #edc-root .edc-btn {
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-hi);
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+    font-family: inherit;
+  }
+  #edc-root .edc-btn:hover { border-color: var(--text-low); }
+  #edc-root .edc-btn:active { transform: scale(0.97); }
+  #edc-root .edc-btn-primary {
+    background: linear-gradient(135deg, var(--pink), #d92a6b);
+    border: none;
+    color: white;
+    font-weight: 600;
+  }
+  #edc-root .edc-btn-primary:hover { filter: brightness(1.08); }
+  #edc-root .edc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+  #edc-root .edc-btn-ghost { background: transparent; }
+  #edc-root .edc-btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+  #edc-root .edc-btn-danger { color: #F0317A; border-color: #3a1c28; }
+
+  #edc-root .edc-status {
+    font-size: 12px;
+    padding: 4px 0;
+    min-height: 16px;
+    font-family: 'SF Mono', Consolas, monospace;
+  }
+  #edc-root .edc-status.ok { color: var(--teal); }
+  #edc-root .edc-status.err { color: var(--pink); }
+  #edc-root .edc-status.pending { color: var(--text-mid); }
+
+  #edc-root .edc-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    flex: 1;
+    min-height: 0;
+  }
+  @media (max-width: 860px) {
+    #edc-root .edc-body { grid-template-columns: 1fr; }
+  }
+
+  #edc-root .edc-col {
+    background: var(--bg-panel);
+    padding: 20px;
+    height: 100%;
+    overflow-y: auto;
+  }
+  #edc-root .edc-col::-webkit-scrollbar { width: 8px; }
+  #edc-root .edc-col::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 4px; }
+
+  #edc-root .edc-section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-low);
+    margin: 18px 0 8px;
+    font-weight: 600;
+  }
+  #edc-root .edc-section-label:first-child { margin-top: 0; }
+
+  #edc-root .edc-field { margin-bottom: 10px; }
+  #edc-root .edc-field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-mid);
+    margin-bottom: 5px;
+  }
+  #edc-root .edc-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #edc-root textarea { resize: vertical; min-height: 64px; }
+
+  #edc-root .edc-color-row { display: flex; align-items: center; gap: 8px; }
+  #edc-root input[type="color"] {
+    width: 40px; height: 36px; border: 1px solid var(--border);
+    border-radius: 8px; background: none; padding: 2px; cursor: pointer;
+  }
+
+  #edc-root .edc-fieldset-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  #edc-root .edc-fieldset-item-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  #edc-root .edc-fieldset-item-top span { font-size: 11px; color: var(--text-low); font-weight: 600; }
+  #edc-root .edc-inline-toggle {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-mid);
+    margin-top: 6px; cursor: pointer; user-select: none;
+  }
+  #edc-root .edc-inline-toggle input { accent-color: var(--teal); }
+
+  /* Discord-style preview */
+  #edc-root .edc-preview-frame {
+    background: #313338;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'gg sans', 'Inter', sans-serif;
+    color: #dbdee1;
+    font-size: 14px;
+  }
+  #edc-root .edc-preview-content { margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
+  #edc-root .edc-embed-card {
+    display: flex;
+    max-width: 520px;
+    background: #2b2d31;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #edc-root .edc-embed-bar { width: 4px; flex-shrink: 0; background: #4e5058; }
+  #edc-root .edc-embed-inner { padding: 8px 12px 12px; flex: 1; min-width: 0; }
+  #edc-root .edc-embed-author { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #f2f3f5; }
+  #edc-root .edc-embed-author img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
+  #edc-root .edc-embed-title { font-size: 15px; font-weight: 600; color: #00a8fc; margin-bottom: 4px; }
+  #edc-root .edc-embed-title.no-link { color: #f2f3f5; }
+  #edc-root .edc-embed-desc { font-size: 13px; line-height: 1.4; color: #dbdee1; white-space: pre-wrap; word-break: break-word; }
+  #edc-root .edc-embed-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  #edc-root .edc-embed-field { font-size: 13px; grid-column: span 2; }
+  #edc-root .edc-embed-field.inline { grid-column: span 1; }
+  #edc-root .edc-embed-field-name { font-weight: 600; color: #f2f3f5; margin-bottom: 2px; }
+  #edc-root .edc-embed-field-value { color: #dbdee1; word-break: break-word; }
+  #edc-root .edc-embed-thumb { width: 74px; height: 74px; object-fit: cover; border-radius: 4px; margin-left: 12px; flex-shrink: 0; }
+  #edc-root .edc-embed-image { margin-top: 10px; max-width: 100%; border-radius: 4px; display: block; }
+  #edc-root .edc-embed-image img { max-width: 100%; border-radius: 4px; display: block; }
+  #edc-root .edc-embed-top-row { display: flex; justify-content: space-between; }
+  #edc-root .edc-embed-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: #b5bac1; }
+  #edc-root .edc-embed-footer img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+  #edc-root .edc-empty-hint { color: var(--text-low); font-size: 12px; padding: 20px 0; text-align: center; }
+
+  #edc-root .edc-row-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  #edc-root .edc-row-item-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  #edc-root .edc-row-item-top span { font-size: 11px; color: var(--text-low); font-weight: 600; }
+  #edc-root .edc-button-item {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 9px;
+    margin-bottom: 8px;
+  }
+  #edc-root .edc-button-item:last-child { margin-bottom: 0; }
+  #edc-root .edc-button-item-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  #edc-root .edc-button-item-top span { font-size: 10.5px; color: var(--text-low); font-weight: 600; }
+  #edc-root select {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-hi);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+  }
+  #edc-root select:focus { outline: none; border-color: var(--teal); }
+  #edc-root .edc-btn-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  #edc-root .edc-emoji-input { max-width: 100%; }
+  #edc-root .edc-limit-hint { font-size: 11px; color: var(--text-low); margin-top: 6px; }
+
+  #edc-root .edc-preview-components { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  #edc-root .edc-preview-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  #edc-root .edc-preview-discord-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    border: none;
+    line-height: 1.2;
+  }
+  #edc-root .edc-preview-discord-btn.disabled { opacity: 0.5; }
+  #edc-root .edc-preview-discord-btn.style-1 { background: #5865F2; }
+  #edc-root .edc-preview-discord-btn.style-2 { background: #4e5058; }
+  #edc-root .edc-preview-discord-btn.style-3 { background: #248046; }
+  #edc-root .edc-preview-discord-btn.style-4 { background: #da373c; }
+  #edc-root .edc-preview-discord-btn.style-5 { background: #4e5058; }
+  #edc-root .edc-preview-discord-btn.style-5::after { content: '\2197'; opacity: 0.8; font-size: 11px; }
+
+  #edc-root .edc-json-wrap { margin-top: 18px; }
+  #edc-root .edc-json-head { display: flex; justify-content: space-between; align-items: center; }
+  #edc-root pre.edc-json {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--teal);
+    overflow-x: auto;
+    max-height: 260px;
+    font-family: 'SF Mono', Consolas, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+</head>
+<body>
+
+<div id="edc-root">
+  <div class="edc-topbar">
+    <div class="edc-brand">
+      <div class="edc-dot"></div>
+      <div class="edc-brand-text heading-font">Embed Dashboard</div>
+    </div>
+    <div class="edc-webhook-row">
+      <input id="edc-webhook" class="edc-webhook-input" type="url" placeholder="https://hook.make.com/your-webhook-id" />
+      <input id="edc-channel" class="edc-webhook-input" type="text" placeholder="Channel ID" style="max-width: 160px; flex: 0 0 160px;" />
+      <button class="edc-btn edc-btn-sm" id="edc-save-webhook">Save</button>
+    </div>
+    <button class="edc-btn edc-btn-sm edc-btn-ghost" id="edc-copy-json">Copy JSON</button>
+    <button class="edc-btn edc-btn-primary" id="edc-send">Send to Webhook</button>
+  </div>
+  <div style="padding: 0 20px;"><div class="edc-status pending" id="edc-status"></div></div>
+
+  <div class="edc-body">
+    <!-- FORM COLUMN -->
+    <div class="edc-col">
+      <div class="edc-section-label">Message</div>
+      <div class="edc-field">
+        <label>Content (plain text above the embed, optional)</label>
+        <textarea id="f-content" placeholder="e.g. New order received" style="min-height:40px;"></textarea>
+      </div>
+
+      <div class="edc-section-label">Author</div>
+      <div class="edc-field"><label>Name</label><input type="text" id="f-authorName" placeholder="Cosmo" /></div>
+      <div class="edc-row2">
+        <div class="edc-field"><label>Icon URL</label><input type="url" id="f-authorIcon" placeholder="https://..." /></div>
+        <div class="edc-field"><label>Link URL</label><input type="url" id="f-authorUrl" placeholder="https://..." /></div>
+      </div>
+
+      <div class="edc-section-label">Title &amp; description</div>
+      <div class="edc-field"><label>Title</label><input type="text" id="f-title" placeholder="New order confirmed" /></div>
+      <div class="edc-field"><label>Title link URL</label><input type="url" id="f-titleUrl" placeholder="https://..." /></div>
+      <div class="edc-field"><label>Description</label><textarea id="f-description" placeholder="Details go here..."></textarea></div>
+
+      <div class="edc-section-label">Color &amp; images</div>
+      <div class="edc-field">
+        <label>Accent color</label>
+        <div class="edc-color-row">
+          <input type="color" id="f-colorPicker" value="#f0317a" />
+          <input type="text" id="f-colorHex" value="#F0317A" style="max-width:110px;" />
+        </div>
+      </div>
+      <div class="edc-row2">
+        <div class="edc-field"><label>Thumbnail URL (small, top right)</label><input type="url" id="f-thumbnail" placeholder="https://..." /></div>
+        <div class="edc-field"><label>Image URL (large, bottom)</label><input type="url" id="f-image" placeholder="https://..." /></div>
+      </div>
+
+      <div class="edc-section-label">Fields</div>
+      <div id="f-fields-list"></div>
+      <button class="edc-btn edc-btn-sm" id="f-add-field" type="button">+ Add field</button>
+
+      <div class="edc-section-label">Buttons</div>
+      <div id="f-rows-list"></div>
+      <button class="edc-btn edc-btn-sm" id="f-add-row" type="button">+ Add button row</button>
+      <div class="edc-limit-hint">Discord allows up to 5 rows, 5 buttons per row. Link buttons open a URL; the rest fire a custom_id your Make.com scenario (or bot) needs to handle.</div>
+
+      <div class="edc-section-label">Footer</div>
+      <div class="edc-row2">
+        <div class="edc-field"><label>Footer text</label><input type="text" id="f-footerText" placeholder="Sent via Cosmo" /></div>
+        <div class="edc-field"><label>Footer icon URL</label><input type="url" id="f-footerIcon" placeholder="https://..." /></div>
+      </div>
+      <label class="edc-inline-toggle">
+        <input type="checkbox" id="f-timestamp" /> Include current timestamp
+      </label>
+    </div>
+
+    <!-- PREVIEW COLUMN -->
+    <div class="edc-col">
+      <div class="edc-section-label">Live preview</div>
+      <div class="edc-preview-frame" id="edc-preview"></div>
+
+      <div class="edc-json-wrap">
+        <div class="edc-json-head">
+          <div class="edc-section-label" style="margin:0;">JSON body</div>
+        </div>
+        <pre class="edc-json" id="edc-json-out"></pre>
+      </div>
+
+      <div class="edc-json-wrap">
+        <div class="edc-json-head">
+          <div class="edc-section-label" style="margin:0;">Channel ID (sent as URL query param, not in the JSON body)</div>
+        </div>
+        <pre class="edc-json" id="edc-channel-out"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const root = document.getElementById('edc-root');
+  const $ = (id) => root.querySelector('#' + id);
+
+  let fields = []; // {id, name, value, inline}
+  let fieldIdSeq = 1;
+
+  let rows = []; // {id, buttons: [{id, label, style, customId, url, emoji, disabled}]}
+  let rowIdSeq = 1;
+  let buttonIdSeq = 1;
+  const BUTTON_STYLES = [
+    { value: 1, label: 'Primary (blurple)' },
+    { value: 2, label: 'Secondary (grey)' },
+    { value: 3, label: 'Success (green)' },
+    { value: 4, label: 'Danger (red)' },
+    { value: 5, label: 'Link (opens URL)' }
+  ];
+
+  function el(tag, cls, html) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function hexToInt(hex) {
+    const clean = (hex || '').replace('#', '').trim();
+    const val = parseInt(clean, 16);
+    return isNaN(val) ? 0 : val;
+  }
+
+  function currentState() {
+    return {
+      content: $('f-content').value.trim(),
+      authorName: $('f-authorName').value.trim(),
+      authorIcon: $('f-authorIcon').value.trim(),
+      authorUrl: $('f-authorUrl').value.trim(),
+      title: $('f-title').value.trim(),
+      titleUrl: $('f-titleUrl').value.trim(),
+      description: $('f-description').value.trim(),
+      colorHex: $('f-colorHex').value.trim() || '#F0317A',
+      thumbnail: $('f-thumbnail').value.trim(),
+      image: $('f-image').value.trim(),
+      footerText: $('f-footerText').value.trim(),
+      footerIcon: $('f-footerIcon').value.trim(),
+      timestamp: $('f-timestamp').checked,
+      fields: fields.map(f => ({
+        name: f.name, value: f.value, inline: f.inline
+      })).filter(f => f.name || f.value)
+    };
+  }
+
+  function buildPayload() {
+    const s = currentState();
+    const embed = {};
+    if (s.authorName || s.authorIcon || s.authorUrl) {
+      embed.author = {};
+      if (s.authorName) embed.author.name = s.authorName;
+      if (s.authorUrl) embed.author.url = s.authorUrl;
+      if (s.authorIcon) embed.author.icon_url = s.authorIcon;
+    }
+    if (s.title) embed.title = s.title;
+    if (s.titleUrl) embed.url = s.titleUrl;
+    if (s.description) embed.description = s.description;
+    embed.color = hexToInt(s.colorHex);
+    if (s.fields.length) {
+      embed.fields = s.fields.map(f => ({
+        name: f.name || '\u200b',
+        value: f.value || '\u200b',
+        inline: !!f.inline
+      }));
+    }
+    if (s.thumbnail) embed.thumbnail = { url: s.thumbnail };
+    if (s.image) embed.image = { url: s.image };
+    if (s.footerText || s.footerIcon) {
+      embed.footer = {};
+      if (s.footerText) embed.footer.text = s.footerText;
+      if (s.footerIcon) embed.footer.icon_url = s.footerIcon;
+    }
+    if (s.timestamp) embed.timestamp = new Date().toISOString();
+
+    const payload = { embeds: [embed] };
+    if (s.content) payload.content = s.content;
+
+    const components = rows
+      .filter(r => r.buttons.length)
+      .map(r => ({
+        type: 1,
+        components: r.buttons.map(b => {
+          const btn = { type: 2, style: b.style };
+          if (b.label) btn.label = b.label;
+          if (b.emoji) btn.emoji = { name: b.emoji };
+          if (b.style === 5) {
+            btn.url = b.url || 'https://';
+          } else {
+            btn.custom_id = b.customId || ('btn_' + r.id + '_' + b.id);
+          }
+          if (b.disabled) btn.disabled = true;
+          return btn;
+        })
+      }));
+    if (components.length) payload.components = components;
+
+    return payload;
+  }
+
+  function renderFieldsList() {
+    const wrap = $('f-fields-list');
+    wrap.innerHTML = '';
+    if (!fields.length) {
+      wrap.appendChild(el('div', 'edc-empty-hint', 'No fields yet. Fields render as name/value pairs, side by side when marked inline.'));
+    }
+    fields.forEach((f) => {
+      const item = el('div', 'edc-fieldset-item');
+      const top = el('div', 'edc-fieldset-item-top');
+      top.appendChild(el('span', null, 'FIELD'));
+      const removeBtn = el('button', 'edc-btn edc-btn-sm edc-btn-danger', 'Remove');
+      removeBtn.type = 'button';
+      removeBtn.addEventListener('click', () => {
+        fields = fields.filter(x => x.id !== f.id);
+        renderFieldsList();
+        renderAll();
+      });
+      top.appendChild(removeBtn);
+      item.appendChild(top);
+
+      const nameInput = el('input');
+      nameInput.type = 'text';
+      nameInput.placeholder = 'Field name';
+      nameInput.value = f.name;
+      nameInput.style.marginBottom = '6px';
+      nameInput.addEventListener('input', (e) => { f.name = e.target.value; renderAll(); });
+      item.appendChild(nameInput);
+
+      const valueInput = el('textarea');
+      valueInput.placeholder = 'Field value';
+      valueInput.value = f.value;
+      valueInput.style.minHeight = '40px';
+      valueInput.addEventListener('input', (e) => { f.value = e.target.value; renderAll(); });
+      item.appendChild(valueInput);
+
+      const toggleLabel = el('label', 'edc-inline-toggle');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = f.inline;
+      cb.addEventListener('change', (e) => { f.inline = e.target.checked; renderAll(); });
+      toggleLabel.appendChild(cb);
+      toggleLabel.appendChild(document.createTextNode('Inline'));
+      item.appendChild(toggleLabel);
+
+      wrap.appendChild(item);
+    });
+  }
+
+  function renderRowsList() {
+    const wrap = $('f-rows-list');
+    wrap.innerHTML = '';
+    $('f-add-row').disabled = rows.length >= 5;
+    if (!rows.length) {
+      wrap.appendChild(el('div', 'edc-empty-hint', 'No buttons yet. Add a row, then add buttons to it.'));
+    }
+    rows.forEach((row, rowIndex) => {
+      const rowItem = el('div', 'edc-row-item');
+      const top = el('div', 'edc-row-item-top');
+      top.appendChild(el('span', null, 'ROW ' + (rowIndex + 1)));
+      const rowBtns = el('div', null);
+      const addBtnBtn = el('button', 'edc-btn edc-btn-sm', '+ Button');
+      addBtnBtn.type = 'button';
+      addBtnBtn.style.marginRight = '6px';
+      addBtnBtn.disabled = row.buttons.length >= 5;
+      addBtnBtn.addEventListener('click', () => {
+        row.buttons.push({ id: buttonIdSeq++, label: '', style: 5, customId: '', url: '', emoji: '', disabled: false });
+        renderRowsList();
+        renderAll();
+      });
+      const removeRowBtn = el('button', 'edc-btn edc-btn-sm edc-btn-danger', 'Remove row');
+      removeRowBtn.type = 'button';
+      removeRowBtn.addEventListener('click', () => {
+        rows = rows.filter(r => r.id !== row.id);
+        renderRowsList();
+        renderAll();
+      });
+      rowBtns.appendChild(addBtnBtn);
+      rowBtns.appendChild(removeRowBtn);
+      top.appendChild(rowBtns);
+      rowItem.appendChild(top);
+
+      if (!row.buttons.length) {
+        rowItem.appendChild(el('div', 'edc-empty-hint', 'Empty row — add a button.'));
+      }
+
+      row.buttons.forEach((btn, btnIndex) => {
+        const bi = el('div', 'edc-button-item');
+        const biTop = el('div', 'edc-button-item-top');
+        biTop.appendChild(el('span', null, 'BUTTON ' + (btnIndex + 1)));
+        const removeBtnBtn = el('button', 'edc-btn edc-btn-sm edc-btn-danger', 'Remove');
+        removeBtnBtn.type = 'button';
+        removeBtnBtn.addEventListener('click', () => {
+          row.buttons = row.buttons.filter(b => b.id !== btn.id);
+          renderRowsList();
+          renderAll();
+        });
+        biTop.appendChild(removeBtnBtn);
+        bi.appendChild(biTop);
+
+        const row3 = el('div', 'edc-btn-row3');
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.placeholder = 'Label';
+        labelInput.value = btn.label;
+        labelInput.addEventListener('input', (e) => { btn.label = e.target.value; renderAll(); });
+        row3.appendChild(labelInput);
+
+        const styleSelect = document.createElement('select');
+        BUTTON_STYLES.forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          if (btn.style === opt.value) o.selected = true;
+          styleSelect.appendChild(o);
+        });
+        styleSelect.addEventListener('change', (e) => { btn.style = parseInt(e.target.value, 10); renderRowsList(); renderAll(); });
+        row3.appendChild(styleSelect);
+
+        const emojiInput = document.createElement('input');
+        emojiInput.type = 'text';
+        emojiInput.className = 'edc-emoji-input';
+        emojiInput.placeholder = 'Emoji (optional)';
+        emojiInput.value = btn.emoji;
+        emojiInput.addEventListener('input', (e) => { btn.emoji = e.target.value; renderAll(); });
+        row3.appendChild(emojiInput);
+
+        bi.appendChild(row3);
+
+        const secondRow = el('div', null);
+        secondRow.style.marginTop = '6px';
+        if (btn.style === 5) {
+          const urlInput = document.createElement('input');
+          urlInput.type = 'url';
+          urlInput.placeholder = 'https://...';
+          urlInput.value = btn.url;
+          urlInput.addEventListener('input', (e) => { btn.url = e.target.value; renderAll(); });
+          secondRow.appendChild(urlInput);
+        } else {
+          const idInput = document.createElement('input');
+          idInput.type = 'text';
+          idInput.placeholder = 'custom_id (e.g. approve_order)';
+          idInput.value = btn.customId;
+          idInput.addEventListener('input', (e) => { btn.customId = e.target.value; renderAll(); });
+          secondRow.appendChild(idInput);
+        }
+        bi.appendChild(secondRow);
+
+        const disabledLabel = el('label', 'edc-inline-toggle');
+        const disabledCb = document.createElement('input');
+        disabledCb.type = 'checkbox';
+        disabledCb.checked = btn.disabled;
+        disabledCb.addEventListener('change', (e) => { btn.disabled = e.target.checked; renderAll(); });
+        disabledLabel.appendChild(disabledCb);
+        disabledLabel.appendChild(document.createTextNode('Disabled'));
+        bi.appendChild(disabledLabel);
+
+        rowItem.appendChild(bi);
+      });
+
+      wrap.appendChild(rowItem);
+    });
+  }
+
+  function renderPreview() {
+    const s = currentState();
+    const preview = $('edc-preview');
+    preview.innerHTML = '';
+
+    if (s.content) {
+      preview.appendChild(el('div', 'edc-preview-content', escapeHtml(s.content)));
+    }
+
+    const hasButtons = rows.some(r => r.buttons.length);
+    const hasAnyEmbedContent = s.authorName || s.title || s.description || s.fields.length || s.thumbnail || s.image || s.footerText || s.timestamp;
+    if (!hasAnyEmbedContent && !s.content && !hasButtons) {
+      preview.appendChild(el('div', 'edc-empty-hint', 'Start filling out the form to see your embed here.'));
+      return;
+    }
+    if (!hasAnyEmbedContent) {
+      renderButtonsPreview(preview);
+      return;
+    }
+
+    const card = el('div', 'edc-embed-card');
+    const bar = el('div', 'edc-embed-bar');
+    bar.style.background = s.colorHex;
+    card.appendChild(bar);
+
+    const inner = el('div', 'edc-embed-inner');
+    const topRow = el('div', 'edc-embed-top-row');
+    const textCol = el('div', null);
+    textCol.style.flex = '1';
+    textCol.style.minWidth = '0';
+
+    if (s.authorName) {
+      const author = el('div', 'edc-embed-author');
+      if (s.authorIcon) {
+        const img = document.createElement('img');
+        img.src = s.authorIcon;
+        img.onerror = () => { img.style.display = 'none'; };
+        author.appendChild(img);
+      }
+      author.appendChild(document.createTextNode(s.authorName));
+      textCol.appendChild(author);
+    }
+
+    if (s.title) {
+      const title = el('div', 'edc-embed-title' + (s.titleUrl ? '' : ' no-link'), escapeHtml(s.title));
+      textCol.appendChild(title);
+    }
+
+    if (s.description) {
+      textCol.appendChild(el('div', 'edc-embed-desc', escapeHtml(s.description)));
+    }
+
+    if (s.fields.length) {
+      const fwrap = el('div', 'edc-embed-fields');
+      s.fields.forEach(f => {
+        const fitem = el('div', 'edc-embed-field' + (f.inline ? ' inline' : ''));
+        fitem.appendChild(el('div', 'edc-embed-field-name', escapeHtml(f.name || '\u200b')));
+        fitem.appendChild(el('div', 'edc-embed-field-value', escapeHtml(f.value || '\u200b')));
+        fwrap.appendChild(fitem);
+      });
+      textCol.appendChild(fwrap);
+    }
+
+    topRow.appendChild(textCol);
+
+    if (s.thumbnail) {
+      const thumb = document.createElement('img');
+      thumb.className = 'edc-embed-thumb';
+      thumb.src = s.thumbnail;
+      thumb.onerror = () => { thumb.style.display = 'none'; };
+      topRow.appendChild(thumb);
+    }
+
+    inner.appendChild(topRow);
+
+    if (s.image) {
+      const imgWrap = el('div', 'edc-embed-image');
+      const img = document.createElement('img');
+      img.src = s.image;
+      img.onerror = () => { imgWrap.style.display = 'none'; };
+      imgWrap.appendChild(img);
+      inner.appendChild(imgWrap);
+    }
+
+    if (s.footerText || s.footerIcon || s.timestamp) {
+      const footer = el('div', 'edc-embed-footer');
+      if (s.footerIcon) {
+        const img = document.createElement('img');
+        img.src = s.footerIcon;
+        img.onerror = () => { img.style.display = 'none'; };
+        footer.appendChild(img);
+      }
+      let text = s.footerText || '';
+      if (s.timestamp) {
+        text = text ? text + ' • Today at ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today at ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      footer.appendChild(document.createTextNode(text));
+      inner.appendChild(footer);
+    }
+
+    card.appendChild(inner);
+    preview.appendChild(card);
+    renderButtonsPreview(preview);
+  }
+
+  function renderButtonsPreview(preview) {
+    if (!rows.some(r => r.buttons.length)) return;
+    const wrap = el('div', 'edc-preview-components');
+    rows.forEach(row => {
+      if (!row.buttons.length) return;
+      const rowEl = el('div', 'edc-preview-row');
+      row.buttons.forEach(btn => {
+        const b = el('span', 'edc-preview-discord-btn style-' + btn.style + (btn.disabled ? ' disabled' : ''));
+        const text = (btn.emoji ? btn.emoji + ' ' : '') + (btn.label || (btn.style === 5 ? 'Link' : 'Button'));
+        b.appendChild(document.createTextNode(text));
+        rowEl.appendChild(b);
+      });
+      wrap.appendChild(rowEl);
+    });
+    preview.appendChild(wrap);
+  }
+
+  function renderJson() {
+    const payload = buildPayload();
+    $('edc-json-out').textContent = JSON.stringify(payload, null, 2);
+    const channelId = $('edc-channel').value.trim();
+    $('edc-channel-out').textContent = channelId ? ('?channel_id=' + channelId) : '(no channel ID set)';
+  }
+
+  function renderAll() {
+    renderPreview();
+    renderJson();
+  }
+
+  // Color sync
+  $('f-colorPicker').addEventListener('input', (e) => {
+    $('f-colorHex').value = e.target.value.toUpperCase();
+    renderAll();
+  });
+  $('f-colorHex').addEventListener('input', (e) => {
+    let v = e.target.value.trim();
+    if (/^#?[0-9a-fA-F]{6}$/.test(v)) {
+      if (!v.startsWith('#')) v = '#' + v;
+      $('f-colorPicker').value = v;
+    }
+    renderAll();
+  });
+
+  // Wire up all plain inputs to re-render
+  ['f-content', 'f-authorName', 'f-authorIcon', 'f-authorUrl', 'f-title', 'f-titleUrl',
+   'f-description', 'f-thumbnail', 'f-image', 'f-footerText', 'f-footerIcon'].forEach(id => {
+    $(id).addEventListener('input', renderAll);
+  });
+  $('f-timestamp').addEventListener('change', renderAll);
+
+  $('f-add-field').addEventListener('click', () => {
+    fields.push({ id: fieldIdSeq++, name: '', value: '', inline: true });
+    renderFieldsList();
+    renderAll();
+  });
+
+  $('f-add-row').addEventListener('click', () => {
+    if (rows.length >= 5) return;
+    rows.push({ id: rowIdSeq++, buttons: [] });
+    renderRowsList();
+    renderAll();
+  });
+
+  // Status helper
+  function setStatus(msg, kind) {
+    const s = $('edc-status');
+    s.textContent = msg;
+    s.className = 'edc-status ' + (kind || 'pending');
+  }
+
+  // Webhook + channel persistence (localStorage — works when run as a plain local/static file)
+  function storageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function storageSet(key, value) {
+    try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+  }
+
+  function loadWebhook() {
+    const url = storageGet('edc-webhook-url');
+    if (url) $('edc-webhook').value = url;
+    const channelId = storageGet('edc-channel-id');
+    if (channelId) $('edc-channel').value = channelId;
+    renderAll();
+  }
+  function saveWebhook() {
+    const url = $('edc-webhook').value.trim();
+    const channelId = $('edc-channel').value.trim();
+    if (!url) { setStatus('Enter a webhook URL before saving.', 'err'); return; }
+    const ok1 = storageSet('edc-webhook-url', url);
+    const ok2 = storageSet('edc-channel-id', channelId);
+    if (ok1 && ok2) {
+      setStatus('Webhook URL and channel ID saved.', 'ok');
+    } else {
+      setStatus('Could not save — your browser may be blocking local storage (e.g. private/incognito mode).', 'err');
+    }
+  }
+  $('edc-save-webhook').addEventListener('click', saveWebhook);
+  $('edc-channel').addEventListener('input', renderJson);
+
+  // Copy JSON
+  $('edc-copy-json').addEventListener('click', async () => {
+    const text = $('edc-json-out').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus('JSON copied to clipboard.', 'ok');
+    } catch (e) {
+      setStatus('Could not copy — select and copy the JSON manually.', 'err');
+    }
+  });
+
+  // Send to webhook — posts the exact same JSON shown in the JSON PAYLOAD panel below,
+  // formatted the way a Make.com "Custom Webhook" trigger feeding a Discord module expects
+  // (content / embeds / components, matching Discord's Execute Webhook schema).
+  $('edc-send').addEventListener('click', async () => {
+    const url = $('edc-webhook').value.trim();
+    if (!url) { setStatus('Add a Make.com webhook URL first.', 'err'); return; }
+    const sendBtn = $('edc-send');
+    sendBtn.disabled = true;
+    setStatus('Sending…', 'pending');
+    const payload = buildPayload();
+    const body = JSON.stringify(payload);
+    const channelId = $('edc-channel').value.trim();
+    let targetUrl = url;
+    if (channelId) {
+      const sep = url.includes('?') ? '&' : '?';
+      targetUrl = url + sep + 'channel_id=' + encodeURIComponent(channelId);
+    }
+    try {
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        // text/plain avoids a browser CORS preflight (OPTIONS) that Make.com's webhook
+        // trigger doesn't handle — the body is still valid JSON and Make.com parses it as such.
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: body
+      });
+      if (res.ok) {
+        setStatus('Sent as JSON to your webhook at ' + new Date().toLocaleTimeString() + '.', 'ok');
+      } else {
+        setStatus('Webhook responded with status ' + res.status + '.', 'err');
+      }
+    } catch (e) {
+      setStatus('Send failed — check the webhook URL and that the Make.com scenario is turned on.', 'err');
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+
+  // Init
+  loadWebhook();
+  renderFieldsList();
+  renderRowsList();
+  renderAll();
+})();
+</script>
+
+</body>
+</html>
