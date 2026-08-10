@@ -288,6 +288,7 @@
   #edc-root .edc-preview-discord-btn.style-4 { background: #da373c; }
   #edc-root .edc-preview-discord-btn.style-5 { background: #4e5058; }
   #edc-root .edc-preview-discord-btn.style-5::after { content: '\2197'; opacity: 0.8; font-size: 11px; }
+  #edc-root .edc-preview-btn-emoji { width: 16px; height: 16px; vertical-align: middle; margin-right: 5px; object-fit: contain; }
 
   #edc-root .edc-json-wrap { margin-top: 18px; }
   #edc-root .edc-json-head { display: flex; justify-content: space-between; align-items: center; }
@@ -318,7 +319,7 @@
     <div class="edc-webhook-row">
       <input id="edc-webhook" class="edc-webhook-input" type="url" placeholder="https://hook.make.com/your-webhook-id" />
       <input id="edc-channel" class="edc-webhook-input" type="text" placeholder="Channel ID" style="max-width: 160px; flex: 0 0 160px;" />
-      <button class="edc-btn edc-btn-sm" id="edc-save-webhook">Save</button>
+      <button class="edc-btn edc-btn-sm" id="edc-save-webhook">Save now</button>
     </div>
     <button class="edc-btn edc-btn-sm edc-btn-ghost" id="edc-copy-json">Copy JSON</button>
     <button class="edc-btn edc-btn-primary" id="edc-send">Send to Webhook</button>
@@ -419,6 +420,18 @@
     { value: 5, label: 'Link (opens URL)' }
   ];
 
+  // Parses either a unicode emoji (😀) or Discord's custom emoji tag format
+  // (<:name:id> or <a:name:id> for animated) into a usable object.
+  function parseEmojiInput(input) {
+    const str = (input || '').trim();
+    if (!str) return null;
+    const match = str.match(/^<(a)?:(\w+):(\d+)>$/);
+    if (match) {
+      return { animated: !!match[1], name: match[2], id: match[3] };
+    }
+    return { name: str }; // unicode emoji or plain shortcode fallback
+  }
+
   function el(tag, cls, html) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -498,7 +511,14 @@
         components: r.buttons.map(b => {
           const btn = { type: 2, style: b.style };
           if (b.label) btn.label = b.label;
-          if (b.emoji) btn.emoji = { name: b.emoji };
+          if (b.emoji) {
+            const parsed = parseEmojiInput(b.emoji);
+            if (parsed) {
+              btn.emoji = parsed.id
+                ? { id: parsed.id, name: parsed.name, animated: parsed.animated || false }
+                : { name: parsed.name };
+            }
+          }
           if (b.style === 5) {
             btn.url = b.url || 'https://';
           } else {
@@ -635,7 +655,7 @@
         const emojiInput = document.createElement('input');
         emojiInput.type = 'text';
         emojiInput.className = 'edc-emoji-input';
-        emojiInput.placeholder = 'Emoji (optional)';
+        emojiInput.placeholder = 'Emoji (😀 or <:name:id>)';
         emojiInput.value = btn.emoji;
         emojiInput.addEventListener('input', (e) => { btn.emoji = e.target.value; renderAll(); });
         row3.appendChild(emojiInput);
@@ -790,8 +810,18 @@
       const rowEl = el('div', 'edc-preview-row');
       row.buttons.forEach(btn => {
         const b = el('span', 'edc-preview-discord-btn style-' + btn.style + (btn.disabled ? ' disabled' : ''));
-        const text = (btn.emoji ? btn.emoji + ' ' : '') + (btn.label || (btn.style === 5 ? 'Link' : 'Button'));
-        b.appendChild(document.createTextNode(text));
+        const parsedEmoji = btn.emoji ? parseEmojiInput(btn.emoji) : null;
+        if (parsedEmoji && parsedEmoji.id) {
+          const img = document.createElement('img');
+          img.src = 'https://cdn.discordapp.com/emojis/' + parsedEmoji.id + '.' + (parsedEmoji.animated ? 'gif' : 'png');
+          img.alt = parsedEmoji.name;
+          img.className = 'edc-preview-btn-emoji';
+          img.onerror = () => { img.style.display = 'none'; };
+          b.appendChild(img);
+        } else if (parsedEmoji && parsedEmoji.name) {
+          b.appendChild(document.createTextNode(parsedEmoji.name + ' '));
+        }
+        b.appendChild(document.createTextNode(btn.label || (btn.style === 5 ? 'Link' : 'Button')));
         rowEl.appendChild(b);
       });
       wrap.appendChild(rowEl);
@@ -867,20 +897,33 @@
     if (channelId) $('edc-channel').value = channelId;
     renderAll();
   }
-  function saveWebhook() {
+  function saveWebhook(silent) {
     const url = $('edc-webhook').value.trim();
     const channelId = $('edc-channel').value.trim();
-    if (!url) { setStatus('Enter a webhook URL before saving.', 'err'); return; }
+    if (!url) {
+      if (!silent) setStatus('Enter a webhook URL before saving.', 'err');
+      return;
+    }
     const ok1 = storageSet('edc-webhook-url', url);
     const ok2 = storageSet('edc-channel-id', channelId);
     if (ok1 && ok2) {
-      setStatus('Webhook URL and channel ID saved.', 'ok');
+      setStatus(silent ? 'Autosaved.' : 'Webhook URL and channel ID saved.', 'ok');
     } else {
       setStatus('Could not save — your browser may be blocking local storage (e.g. private/incognito mode).', 'err');
     }
   }
-  $('edc-save-webhook').addEventListener('click', saveWebhook);
-  $('edc-channel').addEventListener('input', renderJson);
+  $('edc-save-webhook').addEventListener('click', () => saveWebhook(false));
+
+  // Autosave: saves quietly a moment after typing stops, so there's nothing to remember to click.
+  let autosaveTimer = null;
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => saveWebhook(true), 800);
+  }
+  $('edc-webhook').addEventListener('input', scheduleAutosave);
+  $('edc-channel').addEventListener('input', () => { renderJson(); scheduleAutosave(); });
+  $('edc-webhook').addEventListener('blur', () => saveWebhook(true));
+  $('edc-channel').addEventListener('blur', () => saveWebhook(true));
 
   // Copy JSON
   $('edc-copy-json').addEventListener('click', async () => {
